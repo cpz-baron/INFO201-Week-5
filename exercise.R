@@ -1,49 +1,69 @@
-# Exercise 5: dplyr grouped operations
+# Exercise 1: reading and querying a web API
 
-# Install the `"nycflights13"` package. Load (`library()`) the package.
-# You'll also need to load `dplyr`
-#install.packages("nycflights13")  # should be done already
-library("nycflights13")
+# Load the httr and jsonlite libraries for accessing data
+# You can also load `dplyr` if you wish to use it
+#install.packages("httr")
+#install.packages("jsonlite")
+library("httr")
+library("jsonlite")
 library("dplyr")
 
-# What was the average departure delay in each month?
-# Save this as a data frame `dep_delay_by_month`
-# Hint: you'll have to perform a grouping operation then summarizing your data
-flights %>%
-  monthly_delay <- group_by(month)
+# Create a variable base_uri that stores the base URI (as a string) for the 
+# Github API (https://api.github.com)
+base_uri <- "https://api.github.com"
+
+# Under the "Repositories" category of the API documentation, find the endpoint 
+# that will list _repos in an organization_. Then create a variable named
+# `org_resource` that stores the endpoint for the `programming-for-data-science`
+# organization repos (this is the _path_ to the resource of interest).
+org_resource <- "/orgs/programming-for-data-science/repos"
+
+# Send a GET request to this endpoint (the `base_uri` followed by the 
+# `org_resource` path). Print the response to show that your request worked. 
+# (The listed URI will also allow you to inspect the JSON in the browser easily).
+get_response <- GET(paste0(base_uri, org_resource))
+
+# Extract the content of the response using the `content()` function, saving it
+# in a variable.
+text <- content(get_response, "text")
+
+# Convert the content variable from a JSON string into a data frame.
+content.df <- fromJSON(body)
+
+# How many (public) repositories does the organization have?
+content.df %>%
+  filter(private == "FALSE") %>%
   summarize(
-    monthly_delay,
-    mean_month_delay = mean(dep_delay, na.rm = TRUE),
+    count = n()
   ) %>%
-  fliter(mean_month_delay == max(mean_month_delay))
-  plot(monthly_delay)
+  pull(count)
 
-# Which month had the greatest average departure delay?
-flight %>%
-  group_by(dest) %>%
-  summarize(
-    ave_arr_delay = mean(arr_delay, na.rm = TRUE)
-  ) %>%
-  View()
+# Now a second query:
+# Create a variable `search_endpoint` that stores the endpoint used to search 
+# for repositories. (Hint: look for a "Search" endpoint in the documentation).
+search_endpoint <- "/search/repositories"
 
-# If your above data frame contains just two columns (e.g., "month", and "delay"
-# in that order), you can create a scatterplot by passing that data frame to the
-# `plot()` function
+# Search queries require a query parameter (for what to search for). Create a 
+# `query_params` list variable that specifies an appropriate key and value for 
+# the search term (you can search for anything you want!)
+query_params <- list(q = "informatics")
 
+# Send a GET request to the `search_endpoint`--including your params list as the
+# `query`. Print the response to show that your request worked.
+search_response <- GET(paste0(base_uri, search_endpoint), query = query_params)
 
-# To which destinations were the average arrival delays the highest?
-# Hint: you'll have to perform a grouping operation then summarize your data
-# You can use the `head()` function to view just the first few rows
+# Extract the content of the response and convert it from a JSON string into a
+# data frame. 
+extract_content <- fromJSON(content(search_response, "text"))
 
+# How many search repos did your search find? (Hint: check the list names to 
+# find an appropriate value).
+#4590
 
-# You can look up these airports in the `airports` data frame!
-airports %>%
-  filter(faa == "CAE")
+# What are the full names of the top 5 repos in the search results?
+#waddell/urban-informatics-and-visualization
+#luogu-dev/cyaron
+#csev/py4inf
+#compsoc-edinburgh/betterinformatics
+#epequeno/python-for-informatics
 
-# Which city was flown to with the highest average speed?
-flights %>%
-  group_by(dest) %>%
-  summarize(
-    ave_speed = mean(distance/air_time, na.rm = TRUE)
-  ) %>%
-  filter(ave_speed == max(ave_speed, nana.rm = TRUE))
